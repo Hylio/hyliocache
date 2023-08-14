@@ -5,7 +5,7 @@ cache 模块负责提供缓存的并发控制
 */
 
 import (
-	"hyliocache/lru"
+	"github.com/hylio/hyliocache/lru"
 	"sync"
 )
 
