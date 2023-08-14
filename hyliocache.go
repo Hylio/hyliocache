@@ -2,8 +2,8 @@ package hyliocache
 
 import (
 	"fmt"
-	pb "hyliocache/hyliocachepb"
-	"hyliocache/singleflight"
+	pb "github.com/hylio/hyliocache/hyliocachepb"
+	"github.com/hylio/hyliocache/singleflight"
 	"log"
 	"sync"
 )

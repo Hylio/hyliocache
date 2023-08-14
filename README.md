@@ -9,7 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"hylioCache/hyliocache"
+	"github.com/hylio/hyliocache"
 	"log"
 	"net/http"
 )

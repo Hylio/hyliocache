@@ -3,7 +3,7 @@ package hyliocache
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	pb "hyliocache/hyliocachepb"
+	pb "github.com/hylio/hyliocache/hyliocachepb"
 	"io"
 	"net/http"
 	"net/url"

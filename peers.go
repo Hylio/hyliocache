@@ -1,6 +1,6 @@
 package hyliocache
 
-import pb "hyliocache/hyliocachepb"
+import pb "github.com/hylio/hyliocache/hyliocachepb"
 
 // PeerPicker 保证了获取远端分布式节点的能力
 type PeerPicker interface {
