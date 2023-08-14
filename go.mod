@@ -1,4 +1,4 @@
-module hyliocache
+module github.com/hylio/hyliocache
 
 go 1.20
 
