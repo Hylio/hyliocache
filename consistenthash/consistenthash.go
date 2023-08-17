@@ -28,7 +28,8 @@ func (m *Map) Add(keys ...string) {
 	sort.Ints(m.keys)
 }
 
-func (m *Map) Get(key string) string {
+// GetPeer 获取key应该存放的cache
+func (m *Map) GetPeer(key string) string {
 	if len(m.keys) == 0 {
 		return ""
 	}

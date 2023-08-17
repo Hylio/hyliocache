@@ -1,6 +1,9 @@
 # hyliocache
 用go实现类groupchache。
 
+# Highlight
+1. 使用RPC框架取代http框架进行通信
+
 # Usage
 ```
 package main

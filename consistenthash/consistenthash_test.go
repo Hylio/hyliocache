@@ -21,8 +21,8 @@ func TestHash(t *testing.T) {
 	}
 
 	for k, v := range testcases {
-		if m.Get(k) != v {
-			t.Errorf("hashing %s, want %s, but got %s", k, v, m.Get(k))
+		if m.GetPeer(k) != v {
+			t.Errorf("hashing %s, want %s, but got %s", k, v, m.GetPeer(k))
 		}
 	}
 
@@ -30,8 +30,8 @@ func TestHash(t *testing.T) {
 	testcases["23"] = "3"
 
 	for k, v := range testcases {
-		if m.Get(k) != v {
-			t.Errorf("hashing %s, want %s, but got %s", k, v, m.Get(k))
+		if m.GetPeer(k) != v {
+			t.Errorf("hashing %s, want %s, but got %s", k, v, m.GetPeer(k))
 		}
 	}
 }

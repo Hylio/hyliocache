@@ -158,8 +158,8 @@ var file_hyliocachepb_proto_goTypes = []interface{}{
 	(*Response)(nil), // 1: hyliocachepb.Response
 }
 var file_hyliocachepb_proto_depIdxs = []int32{
-	0, // 0: hyliocachepb.GroupCache.Get:input_type -> hyliocachepb.Request
-	1, // 1: hyliocachepb.GroupCache.Get:output_type -> hyliocachepb.Response
+	0, // 0: hyliocachepb.GroupCache.GetPeer:input_type -> hyliocachepb.Request
+	1, // 1: hyliocachepb.GroupCache.GetPeer:output_type -> hyliocachepb.Response
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

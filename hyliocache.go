@@ -128,6 +128,7 @@ func (g *Group) populateCache(key string, value ByteView) {
 	g.mainCache.add(key, value)
 }
 
+// RegisterPeers 为Group初始化clients节点
 func (g *Group) RegisterPeers(peers PeerPicker) {
 	if g.peers != nil {
 		panic("do not register peers more than once")
