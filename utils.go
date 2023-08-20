@@ -7,6 +7,9 @@ import (
 
 // CheckAddr 检查addr是否为x.x.x.x:port的形式
 func CheckAddr(addr string) bool {
+	if strings.HasPrefix(addr, "http:") || strings.HasPrefix(addr, "https:") {
+		addr = strings.Split(addr, "//")[1]
+	}
 	parts := strings.Split(addr, ":")
 	if len(parts) != 2 {
 		return false

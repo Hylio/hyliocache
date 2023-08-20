@@ -1,15 +1,21 @@
 package hyliocache
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/protobuf/proto"
 	"github.com/hylio/hyliocache/consistenthash"
 	pb "github.com/hylio/hyliocache/hyliocachepb"
+	"github.com/hylio/hyliocache/registry"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Server 模块提供了cache之间的通信能力
@@ -21,13 +27,23 @@ const (
 	defaultReplicas    = 50
 )
 
+var (
+	defaultEtcdConfig = clientv3.Config{
+		Endpoints:   []string{"localhost:2379"},
+		DialTimeout: 5 * time.Second,
+	}
+)
+
 // Server 实现了服务端功能
 type Server struct {
+	pb.UnimplementedGroupCacheServer
 	addr        string // 服务地址 like "http://localhost:8080"
 	baseService string // 服务名称
 	mu          sync.Mutex
 	peers       *consistenthash.Map // 一致性哈希 选择节点
 	clients     map[string]*Client  // 每个节点对应的client
+	stopSignal  chan error          // 通知etcd 服务停止
+	status      bool
 }
 
 func NewServer(addr string) *Server {
@@ -38,6 +54,70 @@ func NewServer(addr string) *Server {
 		addr:        addr,
 		baseService: defaultBaseService,
 	}
+}
+
+func (p *Server) Get(ctx context.Context, in *pb.Request) (*pb.Response, error) {
+	group, key := in.GetKey(), in.GetKey()
+	resp := &pb.Response{}
+
+	log.Printf("[hyliocache_svr %s] Receive RPC request - (%s)/(%s)", p.addr, group, key)
+	if key == "" {
+		return resp, fmt.Errorf("key is required")
+	}
+	g := GetGroup(group)
+	if g == nil {
+		return resp, fmt.Errorf("group not found")
+	}
+	view, err := g.Get(key)
+	if err != nil {
+		return resp, err
+	}
+	resp.Value = view.ByteSlice()
+	return resp, nil
+}
+
+// Start 启动服务
+func (p *Server) Start() error {
+	p.mu.Lock()
+	if p.status == true {
+		p.mu.Unlock()
+		return fmt.Errorf("server already start")
+	}
+	// 设置服务状态 添加报错通道
+	p.status = true
+	p.stopSignal = make(chan error)
+
+	// 初始化tcp socket
+	port := strings.Split(p.addr, ":")[1]
+	lis, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		return fmt.Errorf("failed to listen: %v", err)
+	}
+
+	// 注册rpc服务到grpc
+	grpcServer := grpc.NewServer()
+	pb.RegisterGroupCacheServer(grpcServer, p)
+
+	// 注册到etcd
+	go func() {
+		err := registry.Registry("hyliocache", p.addr, p.stopSignal)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		close(p.stopSignal)
+		err = lis.Close()
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		log.Printf("[%s] Revoke service and close tcp socket", p.addr)
+	}()
+
+	p.mu.Unlock()
+
+	if err := grpcServer.Serve(lis); err != nil {
+		return fmt.Errorf("failed to serve: %v", err)
+	}
+	return nil
 }
 
 func (p *Server) Log(format string, v ...interface{}) {
