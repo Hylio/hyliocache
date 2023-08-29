@@ -110,17 +110,18 @@ func (g *Group) getLocally(key string) (ByteView, error) {
 }
 
 func (g *Group) getFromPeer(key string, peer PeerGetter) (ByteView, error) {
+	fmt.Println("[hyliocache]  getFromPeer begins, key :", key, fmt.Sprintf("peer: %+v", peer))
 	req := &pb.Request{
 		Group: g.name,
 		Key:   key,
 	}
-	res := &pb.Response{}
-	err := peer.Get(req, res)
-	fmt.Println(res.Value)
+
+	bytes, err := peer.Get(req)
+	fmt.Println("[hyliocache] get from peer: ", string(bytes))
 	if err != nil {
 		return ByteView{}, err
 	}
-	return ByteView{b: res.Value}, nil
+	return ByteView{b: bytes}, nil
 }
 
 // populateCache 把最近访问过的 没有在缓存中的数据 保存在缓存中

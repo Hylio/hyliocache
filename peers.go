@@ -10,5 +10,5 @@ type PeerPicker interface {
 
 // PeerGetter 保证了可以获取缓存的能力 用Client实现了这个接口
 type PeerGetter interface {
-	Get(in *pb.Request, out *pb.Response) error
+	Get(in *pb.Request) ([]byte, error)
 }

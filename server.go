@@ -23,7 +23,6 @@ import (
 
 const (
 	defaultAddr        = "127.0.0.1:4396"
-	defaultBaseService = "/_hyliocache/"
 	defaultReplicas    = 50
 )
 
@@ -38,7 +37,6 @@ var (
 type Server struct {
 	pb.UnimplementedGroupCacheServer
 	addr        string // 服务地址 like "http://localhost:8080"
-	baseService string // 服务名称
 	mu          sync.Mutex
 	peers       *consistenthash.Map // 一致性哈希 选择节点
 	clients     map[string]*Client  // 每个节点对应的client
@@ -52,12 +50,11 @@ func NewServer(addr string) *Server {
 	}
 	return &Server{
 		addr:        addr,
-		baseService: defaultBaseService,
 	}
 }
 
 func (p *Server) Get(ctx context.Context, in *pb.Request) (*pb.Response, error) {
-	group, key := in.GetKey(), in.GetKey()
+	group, key := in.GetGroup(), in.GetKey()
 	resp := &pb.Response{}
 
 	log.Printf("[hyliocache_svr %s] Receive RPC request - (%s)/(%s)", p.addr, group, key)
@@ -73,6 +70,7 @@ func (p *Server) Get(ctx context.Context, in *pb.Request) (*pb.Response, error) 
 		return resp, err
 	}
 	resp.Value = view.ByteSlice()
+	_, err = proto.Marshal(resp)
 	return resp, nil
 }
 
@@ -83,24 +81,32 @@ func (p *Server) Start() error {
 		p.mu.Unlock()
 		return fmt.Errorf("server already start")
 	}
+	fmt.Println("[server] start begins")
 	// 设置服务状态 添加报错通道
 	p.status = true
 	p.stopSignal = make(chan error)
 
 	// 初始化tcp socket
-	port := strings.Split(p.addr, ":")[1]
+	//port := strings.Split(p.addr, ":")[1]
+	var port string
+	if strings.HasPrefix(p.addr, "http://") {
+		port = strings.Split(p.addr[7:], ":")[1]
+	} else {
+		fmt.Println(p.addr)
+		port = strings.Split(p.addr, ":")[1]
+	}
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
-
+	fmt.Println("[server] tcp done.")
 	// 注册rpc服务到grpc
 	grpcServer := grpc.NewServer()
 	pb.RegisterGroupCacheServer(grpcServer, p)
 
 	// 注册到etcd
 	go func() {
-		err := registry.Registry("hyliocache", p.addr, p.stopSignal)
+		err := registry.Registry("_hyliocache", p.addr, p.stopSignal)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
@@ -126,12 +132,12 @@ func (p *Server) Log(format string, v ...interface{}) {
 
 func (p *Server) Serve(c *gin.Context) {
 	// 限制访问路径
-	if !strings.HasPrefix(c.Request.URL.Path, p.baseService) {
-		panic("Server serving unexpected path: " + c.Request.URL.Path)
-	}
+	//if !strings.HasPrefix(c.Request.URL.Path) {
+	//	panic("Server serving unexpected path: " + c.Request.URL.Path)
+	//}
 	p.Log("%s %s", c.Request.Method, c.Request.URL.Path)
 	// /<basepath>/<groupname>/<key>
-	parts := strings.SplitN(c.Request.URL.Path[len(p.baseService):], "/", 2)
+	parts := strings.SplitN(c.Request.URL.Path, "/", 2)
 	if len(parts) != 2 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "bad request"})
 		return
@@ -171,7 +177,7 @@ func (p *Server) Set(peers ...string) {
 		if !CheckAddr(peer) {
 			panic(fmt.Sprintf("[peer %s] is invalid!", peer))
 		}
-		p.clients[peer] = NewClient(peer + p.baseService)
+		p.clients[peer] = NewClient(peer)
 	}
 }
 
@@ -180,7 +186,7 @@ func (p *Server) PickPeer(key string) (PeerGetter, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if peer := p.peers.GetPeer(key); peer != "" && peer != p.addr {
-		p.Log("Pick remote peer %s", peer)
+		p.Log("server:  Pick remote peer %s", peer)
 		return p.clients[peer], true
 	}
 	return nil, false
